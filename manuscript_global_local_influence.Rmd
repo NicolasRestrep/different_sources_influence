@@ -1,0 +1,493 @@
+---
+title: "Dynamics of Global and Local Social Influence"
+author: "Fatima Alqabandi & Nicolas Restrepo"
+date: '`r format(Sys.time(), "%d %B, %Y")`'
+fontsize: 12pt
+output:
+  pdf_document: default
+  html_document: default
+header-includes:
+  - \usepackage{setspace}
+  - \doublespacing
+  - \usepackage{lineno}
+  - \linenumbers
+  - \def\linenumberfont{\normalfont\tiny\sffamily}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, message=F, warning=FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(igraph)
+library(brms)
+library(patchwork)
+theme_set(theme_minimal())
+```
+
+## Introduction 
+
+Individuals are adept social learners. When trying to infer the most appropriate line of action, they might use a combination of social learning strategies to extract relevant information from those around them. Our understanding of social influence, then, has to account for the fact that agents use sophisticated heuristics when they learn from one another. Our argument in this paper is straightforward: different social phenomena imply particular social learning strategies and this, in turn, affects how they spread throughout a network. Here, we focus on three strategies: relying on one's individual experience, paying attention to one's immediate ties - local influence -, and observing the most central ties of the network - global influence. We show that global and local measures are differentially informative across different behaviors. The key finding is that the emergence of distinct sub-groups, even in fully connected networks, can be explained by the weight agents place on different sources of information. 
+
+This paper has the following structure. First, we provide an overview of the theoretical issues that motivate this analysis. Second, we use the longitudinal network data-set of adolescent behavior collected by Knecht (2012) to suggest that measures of global and local influence might be differentially informative across different behaviors. Third, we build an agent-based model where actors use different combinations of strategies to learn from one another. The results show that different social learning strategies lead to varying diffusion trajectories. We close by discussing the implications of these findings for the study of cultural transmission.
+
+## Background 
+
+### Influence as coordination 
+
+Peer effects are often explained by the need to “fit in” (Robalino and Macy 2018). Individuals might adopt new habits or beliefs not only because they are exposed to novel ideas, but also because certain lines of action fit better in the social contexts where they find themselves. Imagine Jane’s school friends start taking an interest in heavy metal and going to gigs. It makes sense for her to start going to those concerts as well. It is a behavior that fits her social context: it allows her to keep spending time with her friends. This view of social influence as a “problem of fit” (Fligstein 2001) underlies some of our most sophisticated attempts to disentangle how behaviors and ideas spread through networks. Whether it be actor-centric models of behavior dynamics (Snijders 2017) or spin-glass models of belief spread (Galesic and Stein 2019), the core assumption is the same: actors have a higher chance of adopting habits or beliefs if such change would bring about greater synchronicity between them and the people around them. Social influence then could be conceptualized as a problem of coordination (Fligstein 2001). We try to orient ourselves towards the lines of action we perceive as appropriate in our social contexts. 
+
+When assessing whether actions fit an environment, we pay attention to our immediate contexts but also to more global features of the structures where we find ourselves. Suppose that Jane is part of a school where heavy metal is overall looked down upon. She can decide to only pay attention to her friends’ behavior and keep her newly acquired concert-going habits. This might result in her friendship group becoming tightly knit but socially isolated; they would be known as the ‘metalheads.’ Perhaps, she would try to balance these local and global forces by downplaying her love for loud music or complementing it by also going to pop concerts. Finding adequate lines of action in a given environment then is a balancing act between our immediate contexts and the wider structures where we are embedded.
+
+This need to reconcile global and local forces is a central component of our widely accepted theories of social action (Abbott 2005; Martin 2003; Bourdieu 1990). Specific social settings reward certain behaviors and/or identities while discouraging others (Bourdieu 1990). For example, while a relentless drive to make profits might be celebrated in the corporate world, it would seem distasteful and unacceptable if embodied by an avant-garde artist. By virtue of inhabiting these social spaces, we align ourselves to their expectations and regularities. Through our piece-meal interactions, we build a picture of the patterns of behavior that configure the settings we navigate. We infer global patterns by way of our necessarily local experiences. 
+
+In the study of cultural diffusion, the interplay between local and global patterns is exemplified by ideas of “credibility” and “legitimacy” (Centola and Macy 2007; Rossman 2014). The former refers to the fact that agents might abstain from adopting an innovation until they see enough of their peers embracing it. The latter, in turn, reflects that behaviors that break expectations – e.g. a radical innovation or the disadoption of a widely accepted behavior – will be met with resistance in cultural transmission. Though implicitly, these concepts highlight the fact that, when deciding whether to adopt a behavior, agents take into account what their peers are doing but also try to infer more general patterns in the population. Agents aim to infer what the information to which they have access tells them about the general acceptance of a cultural trend in the overall population. To assess the credibility or the legitimacy of an innovation is partly about figuring out how the local patterns we observe fit into the wider global dynamics.
+
+### Beyond immediate ties: social influence and learning heuristics
+
+Contemporary conceptions of social influence also wrestle with the tension between global and local dynamics. Increasingly, researchers have moved away from models that only consider immediate ties to more complex conceptualizations that specify varying sources of influence (DiMaggio and Garip 2012). For the purposes of this analysis, it is important to highlight the work that has shown that central nodes in a structure exercise considerable social influence
+76 across the network (Robalino and Macy 2018; Paluck and Shepherd 2012). These findings lend credence to the argument that popular and salient individuals are particularly influential; a view that has been furthered in scholarly work (Sherif and Sherif 1964) but that has also been the backbone of policy interventions (Campbell et al. 2008). Peer effects then are not monolithic, but rather have varying weights depending on where – and who – they come from.
+
+The underlying assumption here is that agents are capable of inferring who these central nodes are and of drawing information from them. This is not an unwarranted hypothesis.Humans are sophisticated social learners and one of the most widely used social learning strategies, across cultures, is to copy successful individuals (Jiménez and Mesoudi 2019). This means that we are highly sensitive to prestige cues. Experimental work has shown that even children engage in prestige-based social learning (Chudek et al. 2012). Salient individuals in a structure, then, are visible. They are visible because they have many connections – their in-degree count is high – but also because individuals are adept at inferring who has
+high status in a given social group. As Shepherd (2017) notes, these processes of inference vary depending on the social positions that individuals occupy; nodes that are highly visible to a portion of the structure might be relatively obscure to others. But we still look for prestige cues, however limited our vision might be. Agents are not passive receptacles of social influence, but they instead follow cues that might indicate where to look for useful information.
+
+There is an established line of interdisciplinary research that examines the different strategies that individuals use when foraging for information. Imitating “successful” individuals in the network proves an important strategy when tasks are complex or when environments are
+highly variable (Henrich and Broesch 2011; McElreath et al. 2008; Henrich 2001). When
+environments are relatively stable - e.g. Jane knows most people in her school will not show up tomorrow wearing Motorhead t-shirts - just looking at what the majority of group members are doing is an effective strategy (Richerson and Boyd 2008; Rendell et al. 2010). There are trade-offs between the different strategies: while identifying successful individuals entails knowledge about the markers of prestige in a given context, frequency-dependent learning, although efficient, can be ineffective in highly variable environments. Computational models and experimental data show that actors use these different strategies depending on the task at hand (McElreath et al. 2008; Barkoczi and Galesic 2016). Often the most successful strategies involve a blend of different heuristics, combined with some individual exploration.
+
+Multiple strands of research then coalesce around the idea that agents look at different sources when trying the acquire social information. Network researchers have built increasingly complex models of social influence, while scholars interested in social learning provide evidence for the cognitive bases of these learning heuristics. Nonetheless, our models of cultural transmission lag behind. They seldom reflect the fact that agents seek information from different parts of the social structure, that they use different strategies to do so, and that they might give value to such information differently depending on the social phenomena at hand. It remains unclear then how the use of varying strategies of social learning affects processes of cultural transmission.
+
+This line of inquiry is particularly promising because we have grounds to believe that different social learning strategies might shape how practices spread through a network. Edelmann (2018), for instance, shows that agents respond differently to peer influence depending on how culturally proximate they consider their alters and how culturally appropriate they deem the behavior in question. In other words, if a distant acquaintance of Jane recommends a country singer, she might just dismiss it. If one of her ‘metalhead’ friends provides the same recommendation, it might carry more weight just on account of how unexpected that would be. Computational work shows that these learning biases - such as preferentially attending to in-group members (Smaldino et al. 2017) or discarding information that is too distant from one’s existent preferences (Deffuant et al. 2000) - leads to varying diffusion trajectories. Even slight changes in the information that agents take into account give way to contrasting outcomes, from total consensus to fractured polarization. The question, then, is whether foraging for information from different sources, even when no biases are present, would also lead to varying patterns of diffusion. To tackle this issue, we need two things: first, statistical methods that can help us disentangle the importance of different sources of information for a given social phenomenon; second, ways of formalizing how agents use and give weight to different social learning strategies.
+
+### Measuring and formalizing learning strategies 
+
+To measure the differential impact of different sources of influence, we can draw ideas from research on social learning, specifically on the cultural evolution of strategies in games. When a soccer manager is deciding what formation to play, they need to consider many factors: their own track-record with a strategy, how that formation has fared in the league as a whole, and the kind of strategy their rivals are likely to use (Mesoudi 2020). Recent work explores how these global and local sources of information help us predict the popularity and evolution of certain strategies across time (Mesoudi 2020; Beheim, Thigpen, and McElreath 2014). Researchers have also designed games to conduct experimental work on broader social learning patterns (Deffner, Kleinow, and McElreath 2020). Though their statistical models vary in complexity, these studies tend to use repeated measures at the individual level to fit multilevel models that examine how informative personal record and social cues are when predicting what players do next. Our argument is that we can adapt the techniques that
+these studies use in order to infer the informativeness of different sources of social influence in longitudinal network data.
+
+In order to provide a formal model that specifies the importance of varying sources of influence, we can use as a starting point Friedkin and Johnsen’s (1997) classic formulation of social influence. Formalization in this case is useful because it specifies exactly how new ideas of social influence expand upon previous work, and - importantly - the assumptions we have to make in the process. Friedkin and Johnsen’s (1997) is as follows:
+
+$$Y^{(t)} = \alpha WY^{(t-1)} + (1-\alpha)Y^{(1)}$$ 
+
+Here, $Y^{(t)}$ is a vector of length $n \times 1$ that represents the agents’ opinions or behaviors at time $t$. On the right-hand side of the equation, we notice two terms that could be roughly described as the social influence component and the personal track-record respectively. Let’s
+start with the latter: $Y^{(1)}$ is a vector of length $n \times 1$ that reflects the individuals’ starting opinions, and how these might be affected by exogenous variables. The first component contains $W$, which is an $n \times n$ matrix that represents the interpersonal influences that exist in given structure. Thus, when multiplied with the individuals’ opinions at time $t-1$, which is what $Y^{(t-1)}$ captures, this term represents the peer effects on opinion. The parameter $\alpha$ just controls how much weight individuals give to social cues relative to their starting opinions.
+
+We can re-write this equation to specify varying sources of influence. Let $V$ be an $n \times n$ matrix that indexes who the most popular nodes in a network are. We need a cutoff to determine what nodes fall within this group, and we specify how we operationalize this notion of popularity below. For now, it would be useful to provide a concrete example. Imagine we  have a network consisting of six nodes, and we have determined that nodes three and four are considered the most popular. The matrix $V$ would look like this:
+
+$$
+V_{6,6} =
+\begin{pmatrix}
+0 & 0 & 0.5 & 0.5 & 0 & 0 \\
+0 & 0 & 0.5 & 0.5 & 0 & 0 \\
+0 & 0 & 0.5 & 0.5 & 0 & 0 \\
+0 & 0 & 0.5 & 0.5 & 0 & 0 \\
+0 & 0 & 0.5 & 0.5 & 0 & 0 \\
+0 & 0 & 0.5 & 0.5 & 0 & 0 \\
+\end{pmatrix}
+$$ 
+
+In the Friedkin 170 and Johnsen (1997) model, the rows of the matrices must sum to one. Here, we have two popular nodes so they split the weight their actions or beliefs have. We can think about this as the visibility matrix: it simply stores information about the nodes whose opinions or behaviors agents consider when using prestige-biased social learning.
+
+Now, let $\lambda$ be a parameter – similar to $\alpha$ – that specifies how much weight is given to the opinions of one’s peers versus those of the most popular nodes – i.e. local vs. global influence.
+
+The equation would look like this:
+
+$$ Y^{(t)} = \alpha Y^{(t-1)}[\lambda (W) + (1-\lambda)V] + (1-\alpha)Y^{(1)}$$
+Though this equation might seem considerably longer than the original, the changes are
+minimal. The term $\lambda$ tells us whether agents give more importance to the views of their peers or to those of popular nodes, and the matrix $V$ signals who the latter are. We can think of this specification as a more general form of the Friedkin and Johnsen (1997) model. If we set $\lambda$ to 1, then we get their seminal equation. The result then is a model of social influence that takes into account that individuals look at different places of the social structure when learning from one another.
+
+In the analyses below, we show that considering these varying sources of influence is important to understand processes of cultural transmission. First, we note that local and global dynamics might be differentially informative across behaviors, suggesting that we should indeed disentangle the relative weight of different sources of influence. Second, we build an agent-based simulation based on our revised model of social influence, showing that trajectories of diffusion vary depending on the learning strategies that individuals use.
+
+## Global and local influence in longitudinal network data 
+
+What we need is an empirical strategy to adjudicate the importance of different sources of social influence for a given social phenomenon. Consider a behavior of interest like drinking alcohol. The question we would like to answer is whether to predict agent j’s drinking habits at time t + 1, we should look at the behavior of their immediate ties or at the actions of the most popular nodes of the network at time t. Using longitudinal network data, we can generate predictions using only within-person variation in global and local influence (Beheim, Thigpen, and McElreath 2014). Thus, this approach is useful to disentangle how informative local and global dynamics are for explaining the spread and development of a phenomena of interest – like drinking – in networks across time. In the following analysis, we fit Bayesian multilevel models to longitudinal network data to show how the informativeness of different sources of influence varies across social phenomena.
+
+Here, we use the longitudinal data-set of adolescent behaviors and opinions collected by Knecht et al. (2012). The data-set was collected over four waves in the space of three months between 2003 and 2004. In total, 2996 students – belonging to 14 schools in the Netherlands – were surveyed. 1509 students participated in all four waves and we focus on their responses for the following analysis.
+
+We focus on four independent variables: drinking, whether a respondent has ran a red light while biking, whether they have copied an illegal CD, and whether they have used
+public transportation without paying the fare. We choose to examine different variables
+because our central goal is to analyze whether global and local measures are differentially informative across social phenomena. The questions for these four items were the same: they asked the respondents about their engagement with these behaviors in the last three months. The possible responses were ordinal with five categories: “never,” “one time,” “two to four times,” “five to ten times,” and “more than ten times.” For the purposes of this analysis, we dichotomize the responses so that if a participant answers “never” they get a value of 0 or a value of 1 otherwise. We do this so that the connections between this empirical analysis and the agent-based simulation presented below are clearer.
+
+The explanatory variables are two measures we construct to represent the local and global prevalence of the behavior in question. The local score is the average behavior among ego’s friends. Thus, if ego has five nominated friends and two of them drink, then ego’s local score at that wave would be $\frac{2}{5}$. Local score, then, varies across respondents, reflecting differences in their immediate friendship networks. The global score, in turn, is the same for all individuals embedded in the same structure at a given wave. We calculate it by looking at the average behavior of the most popular nodes at a given time. To operationalize this idea of popularity, we look at eigen-vector centrality. We consider the nodes to be among the most popular if they have an eigen-vector centrality score above the 85th percentile[^There are different ways of operationalizing popularity; cf. (Robalino and Macy 2018). Here, we decide
+to use a threshold that indexes a group of high-status, popular nodes. This captures how social learning scholars have discussed and formalized prestige-biased social learning (Jiménez and Mesoudi 2019). We want to reflect the idea that, when using this social learning strategy, agents look at a few individuals who theyconsider to be successful. Therefore, having a threshold that helps us distinguish between this group and therest of the nodes is appropriate.]. Say then that, in a given school, there are six nodes whose eigen-vector centrality is above that threshold, and one of them drinks. The global score for all nodes in that network in that wave would be $\frac{1}{6}$. Though these constructed variables are necessarily rough approximations, we consider that these scores can help us disentangle the importance of global and local sources of influence for different behaviors.
+
+Our main goal in these analyses is to examine whether these two variables – local and global scores – are differentially informative for the behaviors under examination. To address this issue, we fit Bayesian multilevel logit models where we allow the intercept and the effect of time to vary by individual. We use weakly regularizing priors that do not reflect any assumptions about the phenomena in question but rather center the estimates towards a sensible space. The prior for the effects of the global and local scores and the effect of time are narrow because overly flat priors in logit models often translate into assuming that the ends of the probability scale - either 0 or 1 - are disproportionately likely. The models we fit here have the following functional form:
+
+$$ Y_i \sim Binomial(1, p_i)$$
+$$ logit(p_i) = \alpha_{[id][i]} + \beta_{local[i]} \times local + \beta_{global[id]} \times global + \gamma_{wave[id][i]} \times wave$$
+$$ (\beta_{global}, \beta_{local}, \gamma_{wave}) \sim Normal(0, 1.5)$$
+$$ \alpha \sim Student-t(3, 0, 2.5)$$
+$$ \sigma \sim Student-t(3, 0, 2.5)$$
+$$R \sim LKJcorr(1)$$
+
+Any examination about peer effects has to deal with the potential confounds of selection and influence (Steglich, Snijders, and Pearson 2010). The central danger is to think that individuals are becoming like their peers when really they are just choosing to interact with like-minded individuals in the first place. Here, longitudinal data can help us address that concern. This type of data provides repeated measures for each individual, which allows us to cluster estimates at the level of the respondent. This means we can use within-person variation to generate our predictions, each individual acting effectively as their own control group. The models above let us adjudicate whether changes in local and global scores, at the individual level, lead to differences in the likelihood of adopting a behavior of interest. Nonetheless, our main goal here is not to provide a rigorous causal account; Robalino and Macy (2018) have accomplished that well. Instead, we want to highlight two ideas: first, that we can disentangle the effects of central nodes and local ties; second, that the informativeness of these measures might vary for different social phenomena.
+
+```{r, fig.height = 8, fig.width = 7}
+
+### Alcohol ####
+alc_model <- read_rds("Analyses/alcohol_model.rds")
+
+ss <- posterior_samples(alc_model) %>% 
+  select(b_friends_z, b_popular_z)
+
+ss_long <- ss %>% 
+  pivot_longer(1:2, values_to = "coefficient", names_to = "type") %>% 
+  mutate(coef = if_else(type == "b_friends_z", "friends", "popular"), 
+         coef = as.factor(coef))
+
+p_alc <- ss_long %>% 
+  ggplot(aes(x = coefficient, fill = coef)) +
+  geom_density(alpha = 0.5) + 
+  labs(x = "", 
+       title = "Coefficients in log-odds", 
+       subtitle = "Alcohol") + 
+  theme(legend.position = "top") +
+  theme(legend.title = element_blank())
+
+alc_diff <- ss %>% 
+  mutate(difference = b_friends_z-b_popular_z) %>% 
+  ggplot(aes(x = difference)) +
+  geom_density(fill = "gray80", 
+               alpha = 0.5) +
+  labs(x = "", 
+       y = "", 
+       title = "Difference")
+
+
+### Red light ####
+bike_model <- read_rds("Analyses/bike_model.rds")
+
+ss <- posterior_samples(bike_model) %>% 
+  select(b_friends_z, b_popular_z)
+
+ss_long <- ss %>% 
+  pivot_longer(1:2, values_to = "coefficient", names_to = "type") %>% 
+  mutate(coef = if_else(type == "b_friends_z", "friends", "popular"), 
+         coef = as.factor(coef))
+
+p_bike <- ss_long %>% 
+  ggplot(aes(x = coefficient, fill = coef)) +
+  geom_density(alpha = 0.5) + 
+  labs(x = "", 
+       title = "", 
+       subtitle = "Red Light") +
+  theme(legend.position = "none") +
+  theme(legend.title = element_blank())
+
+bike_diff <- ss %>% 
+  mutate(difference = b_friends_z-b_popular_z) %>% 
+  ggplot(aes(x = difference)) +
+  geom_density(fill = "gray80", 
+               alpha = 0.5) +
+  labs(x = "", 
+       y = "", 
+       title = "")
+
+### Traffic ####
+fare_model <- read_rds("Analyses/fare_model.rds")
+
+ss <- posterior_samples(fare_model) %>% 
+  select(b_friends_z, b_popular_z)
+
+ss_long <- ss %>% 
+  pivot_longer(1:2, values_to = "coefficient", names_to = "type") %>% 
+  mutate(coef = if_else(type == "b_friends_z", "friends", "popular"), 
+         coef = as.factor(coef))
+
+p_fare <- ss_long %>% 
+  ggplot(aes(x = coefficient, fill = coef)) +
+  geom_density(alpha = 0.5) + 
+  labs(x = "", 
+       title = "", 
+       subtitle = "Traffic Fare") +
+  theme(legend.position = "none") +
+  theme(legend.title = element_blank())
+
+fare_diff <- ss %>% 
+  mutate(difference = b_friends_z-b_popular_z) %>% 
+  ggplot(aes(x = difference)) +
+  geom_density(fill = "gray80", 
+               alpha = 0.5) +
+  labs(x = "", 
+       y = "", 
+       title = "")
+
+### CD ####
+copy_model <- read_rds("Analyses/copy_model.rds")
+
+ss <- posterior_samples(copy_model) %>% 
+  select(b_friends_z, b_popular_z)
+
+ss_long <- ss %>% 
+  pivot_longer(1:2, values_to = "coefficient", names_to = "type") %>% 
+  mutate(coef = if_else(type == "b_friends_z", "friends", "popular"), 
+         coef = as.factor(coef))
+
+p_copy <- ss_long %>% 
+  ggplot(aes(x = coefficient, fill = coef)) +
+  geom_density(alpha = 0.5) + 
+  labs(x = "", 
+       title = "", 
+       subtitle = "Copy CD") +
+  theme(legend.position = "none") +
+  theme(legend.title = element_blank())
+
+copy_diff <- ss %>% 
+  mutate(difference = b_friends_z-b_popular_z) %>% 
+  ggplot(aes(x = difference)) +
+  geom_density(fill = "gray80", 
+               alpha = 0.5) +
+  labs(x = "", 
+       y = "", 
+       title = "")
+
+
+patched <- (p_alc | alc_diff) / (p_bike | bike_diff) /(p_fare | fare_diff) / (p_copy | copy_diff)
+
+patched
+
+```
+
+Figure 1 shows the marginal posterior distributions for the coefficients for local and global scores for the four models, as well as the difference between the former and the latter. We can read these plots as the predicted increase in the log-odds of incurring in the behavior at hand given a one standard deviation increase in either global or local score. At first glance, we notice that the relative weight of these coefficients is consistently high; an increase in either global or local scores would result in considerably higher log-odds of engaging in the behavior in question. Nonetheless, we also notice subtle differences between local and global dynamics in the models. For illegally copying a CD, the behaviors of the immediate ties and those of the central nodes are almost equally as informative for ego’s behavior in following waves, with the former being slightly more influential. When it comes to running a traffic light and not paying a public transportation fare, however, the distributions of the difference between both coefficients is mostly negative. This implies that increases in the global score would have a bigger effect on the probability of engaging in these behaviors than increases in the local counterpart. We notice the opposite dynamic when we consider drinking: variation in local measures is more informative of one’s drinking habits than the actions of the popular nodes.
+
+We need to be careful when interpreting these coefficients. The coefficients of logit models are notoriously difficult to understand when examined separately. This is because the absolute probability of the outcome depends on all the moving parts of the model, not just the marginal distribution of a single coefficient estimate. Moreover, differences that might seem considerable between high values in the log-odds scale are smaller when transposed to the probability scale. For this reason, we plot the predicted probabilities of engaging in these behaviors, varying the values of global and local scores.
+
+```{r, fig.height = 8, fig.width = 7}
+bike_pp <- read_rds("Figures/bike_pp.R")
+fare_pp <- read_rds("Figures/fare_pp.R")
+copy_pp <- read_rds("Figures/copy_pp.R")
+alco_pp <- read_rds("Figures/alcohol_pp.R")
+
+patch <- (bike_pp / fare_pp / copy_pp / alco_pp)
+
+patch
+```
+
+Figure 2 shows two density distributions for each model. We take the intercept of a participant in the sample and predict their probability of engaging in the behavior at hand at different values of the main independent variables. The red density plots, for instance, represent the predicted probability of engaging in the behavior when we add a one standard deviation increase to the global score while keeping local score at its median value. The blue density plots show the opposite: an increase in local score while holding global score constant. We notice that, in the model that predicts alcohol consumption, an increase in local score results in a higher probability of engaging in the behavior than a comparable increase in global score.The same occurs for the model that predicts illegaly copying a CD. For the remaining two models, the pattern is reversed: the distribution of predicted probabilities is higher after a one standard deviation increase in the global score. This means that a rise in global score is more likely to lead to higher predicted probability of engaging in the behavior.
+
+Overall, the stories that the models tell are relatively consistent: the habits of friends and295of popular nodes are informative for understanding an agent’s probability of adopting the behavior. Increases in both global and local scores lead to a heightened predicted probability of engaging in all three behaviors. To an extent, this consistency is reassuring. The behaviors298at hand are all similar insofar as they are ‘deviant’ behaviors that require some risk-taking. Overwhelmingly different results would be concerning. Nonetheless, we do notice slight but considerable differences in how important each source of influence is for predicting the agents’ behaviors in the next wave.
+
+These results are meant to be illustrative. We do not claim to speak about the substantive issues of adolescent drinking or deviant behavior in general. Instead, we merely want to illustrate that the importance of different types of social influence might vary across phenomena. Even for behaviors that are relatively similar, we notice differences in how informative global and local sources of influence are for predicting ego’s behavior. An important question that emerges from this insight is whether the weight that is ascribed to global or local sources of information affects processes of cultural transmission. In the next section, we build an agent-based simulation to examine this question.
+
+## Transmission and different social learning strategies
+
+In this simulation, we situate a hundred agents in a network and let them learn from one another, placing different weights on varying sources of information. The agents are embedded in a randomly generated small-world network, which we hold constant across the simulations. Figure 3 shows this network.
+
+```{r}
+set.seed(33)
+# Produce initial network visualization
+# Create small world network 
+network <- sample_smallworld(dim = 1, size = 100, nei = 4, p = 0.1, 10, loops = F)
+plot(network, vertex.size = 6, vertex.label = NA, main = "Figure 3")
+```
+
+The thing that is being transmitted here is a dichotomous behavior - like drinking - and, thus, at any point the agents can occupy one of two states, either 0 or 1. At the beginning of the simulation, each node has a starting probability $p$ of having the behavior $(B=1)$. Each turn, every agent looks around and observes three pieces of information: their own record of behavior, the average of their immediate ties (local average), and the average of the most central nodes of the network (global average). Then, it updates its current state by conducting a Bernoulli trial with probability $\pi$ so that:
+
+$$ Pr(B=1) = \pi $$
+$$ Pr(B=0) = 1 - \pi$$
+
+$\pi$ is determined by the different sources of information from where agents can learn, and it can be defined by adapting the modified model of social influence defined above. We just need to alter the model so that it considers influence from the perspective of each agent. For an agent $i$, the equation that defines $\pi$ is:
+
+$$ \pi_i = \alpha[ \lambda (local_{it}) + (1 - \lambda) global_t] = (1 - \alpha) personal_{itb}$$
+
+Let us explain where these terms come from. Recall that, in the formulation above, $W$ is the matrix of interconnections for a given network. Here, we represent the local score as the average state of the nodes to which agent $i$ is immediately connected at time $t$. Thus, if agent $i$ is connected to $k$ nodes, its local score would be the average of a vector of that respective length - $\sum_k w_{ik}$. Conversely, global score represents the same procedure but for $V$, the visibility matrix. Thus, if there are $k$ popular nodes in the network, the global score is defined by $\sum_k v_k$. Last, we need a term that reflects the agent’s track-record with the behavior at time $t$. This is the $termpersonal_{itb}$, which is akin to $Y^{(1)}$ and $Y^{(t-1)}$ in the original formulation, capturing the habits and idiosyncrasies of the agents. When $\alpha = 1$ agents place no weight on their personal preferences, and their likelihood to adopt or disadopt the behavior is wholly dictated by social information. When $\lambda = 1$, in turn, actors consider only information from their direct ties, ignoring what the most central nodes of the network are doing.
+
+The personal preference for the behavior $(B=1)$ at any given time $t$ is calculated using a softmax choice rule that takes into account the number of times an actor has been in state $B=1$ across the total number of turns:
+
+$$ personal_{itb} = \frac{exp(successes_{it})}{sum_n exp(trials_{nit})} $$
+
+The model is relatively simple. Each turn, every agent looks at their immediate ties and computes the average. They do the same for the most central nodes in the network. Then, they consider their own track record and adjust their preferences accordingly. The global parameters $\alpha$ and $\lambda$ determine how much weight is given to each piece of information.
+
+Figures 4 and 5 display the results for simulations that explore the parameter space. We run the model for each combination of $\alpha$ and $\lambda$ between 0 and 1, moving in increments of 0.1. For each parameter pair, we run the simulation 25 times, each consisting of a hundred turns. We run these simulations with starting probabilities $p= (0.25,0.5,0.75)$, which represent the three panels on each of the figures. In the y axis, we find $\lambda$, the weight of local influence. The x axis, in turn, represents $\alpha$: how much attention agents pay to social information versus their own preferences or habits. The lower left corner of the heatmaps, then, represents agents who only learn from individual experience. In the upper right corner, in turn, we find agents who place a lot of weight on social cues and who only extract these from their immediate neighbors.
+
+Figure 4 shows the median proportion of agents who had adopted the behavior at the end of each run. We see interesting and expected patterns. The most apparent observation is that processes of transmission are affected by the sources of information to which individuals pay attention. When there is no social influence, predictably there is not much transmission. As $\alpha$ increases, however, we notice that there is tendency for the whole network to adopt the same state, either $B=0$ or $B=1$. However, at medium values of $\alpha$, the median proportion at the end of each run is not 0 or 1, indicating the presence of subgroups.
+
+```{r}
+#### Prob = 0.25 ####
+list_025 <- read_rds("Data/list_025.rds")
+vector_si <- rep(seq(0, 1, by = 0.1), 11)
+vector_g <- rep(seq(0, 1, by = 0.1), each = 11)
+
+medians_025 <- c()
+conv_025 <- c()
+
+for (i in 1:121) {
+    last_turns <- map_dbl(.x = c(1:25), ~ list_025[[i]][[.x]][[100]])
+    m <- median(last_turns)
+    medians_025[i] <- m
+}
+
+for (i in 1:121) {
+  last_turns <- map_dbl(.x = c(1:25), ~ list_025[[i]][[.x]][[100]])
+  convergence <- n_distinct(which(last_turns==1 | last_turns==0))
+  conv_025[i] <- convergence/25
+} 
+
+
+df_025 <- tibble(soc_inf = vector_si, 
+                 imp_friends = vector_g, 
+                 median = medians_025,
+                 convergence = conv_025,
+                 init = 0.25)
+#### Prob 0.5 ####
+list_05 <- read_rds("Data/list_05.rds")
+vector_si <- rep(seq(0, 1, by = 0.1), 11)
+vector_g <- rep(seq(0, 1, by = 0.1), each = 11)
+
+medians_05 <- c()
+conv_05 <- c()
+
+for (i in 1:121) {
+  last_turns <- map_dbl(.x = c(1:25), ~ list_05[[i]][[.x]][[100]])
+  m <- median(last_turns)
+  medians_05[i] <- m
+}
+
+for (i in 1:121) {
+  last_turns <- map_dbl(.x = c(1:25), ~ list_05[[i]][[.x]][[100]])
+  convergence <- n_distinct(which(last_turns==1 | last_turns==0))
+  conv_05[i] <- convergence/25
+} 
+
+
+df_05 <- tibble(soc_inf = vector_si, 
+                 imp_friends = vector_g, 
+                 median = medians_05,
+                 convergence = conv_05,
+                 init = 0.5)
+
+#### Prob = 0.75 ####
+list_075 <- read_rds("Data/list_075.rds")
+vector_si <- rep(seq(0, 1, by = 0.1), 11)
+vector_g <- rep(seq(0, 1, by = 0.1), each = 11)
+
+medians_075 <- c()
+conv_075 <- c()
+
+for (i in 1:121) {
+  last_turns <- map_dbl(.x = c(1:25), ~ list_075[[i]][[.x]][[100]])
+  m <- median(last_turns)
+  medians_075[i] <- m
+}
+
+for (i in 1:121) {
+  last_turns <- map_dbl(.x = c(1:25), ~ list_075[[i]][[.x]][[100]])
+  convergence <- n_distinct(which(last_turns==1 | last_turns==0))
+  conv_075[i] <- convergence/25
+} 
+
+
+df_075 <- tibble(soc_inf = vector_si, 
+                imp_friends = vector_g, 
+                median = medians_075,
+                convergence = conv_075,
+                init = 0.75)
+
+#### Join and Plot ####
+df <- rbind(df_025, 
+            df_05, 
+            df_075)
+
+(median_plot <- df %>% 
+    ggplot(aes(x = soc_inf, y = imp_friends)) + 
+    scale_fill_distiller(palette = "YlGnBu", direction = 1) +
+    geom_tile(aes(fill=median)) + 
+    theme_light() +
+    labs(title = "Median Proportion at the end of each run", 
+         fill = "", 
+         x = "Weight of social cues", 
+         y = "Weight of local influence", 
+         caption = "Figure 4") + 
+    scale_x_continuous(breaks = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1)) + 
+    scale_y_continuous(breaks = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1))) + 
+  theme(axis.text.x = element_text(angle = 90)) + 
+  facet_wrap(~init)
+
+
+
+
+(convergence_plot <- df %>% 
+    ggplot(aes(x = soc_inf, y = imp_friends)) + 
+    scale_fill_distiller(palette = "YlGnBu", direction = 1) +
+    geom_tile(aes(fill=convergence)) + 
+    theme_light() +
+    labs(title = "Proportion of runs with total convergence", 
+         fill = "", 
+         x = "Weight of social cues", 
+         y = "Weight of local influence", 
+         caption = "Figure 5") + 
+    scale_x_continuous(breaks = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1)) + 
+    scale_y_continuous(breaks = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1))) + 
+  theme(axis.text.x = element_text(angle = 90)) + 
+  facet_wrap(~init)
+
+
+
+```
+
+Figure 5 displays the proportion of runs that ended in total convergence - i.e. all agents adopting the same state. We notice that it is not after $\alpha >0.4$, when social information starts playing a more considerable role, that we start seeing cases of total consensus. These patterns seem to be robust across different values of the initial probability $p$. We want to direct attention, nonetheless, to the upper right quadrant of the plots. Even when agents mostly place weight on social information, prioritizing local information can still lead to sub-groups even in fully connected networks. To use the example from above, this might be the case of Jane only paying attention to her close friends and embracing the “metalhead” label. Her friendship group becomes a cluster among the wider network of musical interests in her school.
+
+```{r}
+ew_runs <- tibble(
+  turn = 1:100, 
+  `11` = list_025[[61]][[11]], 
+  `14` = list_025[[61]][[14]],
+  `19` = list_025[[61]][[19]], 
+  `24` = list_025[[61]][[24]]
+) 
+
+ew_runs_long <- ew_runs %>% 
+  pivot_longer(2:5, names_to = "run", values_to = "proportion")
+
+ew_runs_long %>% 
+  ggplot(aes(turn, proportion)) +
+  geom_line() + 
+  facet_wrap(~run) + 
+  labs(title = "Equal weight", 
+       subtitle = "p = 0.25; alpha = 0.5; lambda = 0.5", 
+       x = "Turn", 
+       y = "% of Adopters", 
+       caption = "Figure 6")
+
+hsl_runs <- tibble(
+  turn = 1:100, 
+  `11` = list_025[[99]][[11]], 
+  `14` = list_025[[99]][[14]],
+  `19` = list_025[[99]][[19]], 
+  `24` = list_025[[99]][[24]]
+) 
+
+hsl_runs_long <- hsl_runs %>% 
+  pivot_longer(2:5, names_to = "run", values_to = "proportion")
+
+hsl_runs_long %>% 
+  ggplot(aes(turn, proportion)) +
+  geom_line() + 
+  facet_wrap(~run) + 
+  labs(title = "High social and local influence", 
+       subtitle = "p = 0.25; alpha = 1; lambda = 0.8", 
+       x = "Turn", 
+       y = "% of Adopters", 
+       caption = "Figure 7")
+
+```
+
+Figures 6 and 7 show the trajectories of specific runs for different parameter combinations. Figure 6 shows simulations where social influence is given equal weight to individual experience, and local and global averages are also equally influential. The patterns mostly denote fluctuations but no strong tendencies and no total convergence. Figure 7, in turn, depicts four runs where agents only give weight to social cues and where they strongly prefer local information. Here, we notice much clearer tendencies towards total convergence. However, the push and pull between different sources of influence can still create fault-lines and sub-groups, as we see in run 24. Using different social learning strategies, then, considerably shapes how behaviors and ideas spread across networks. The interplay between local and global dynamics, as well as individual habits, leads to different trajectories of diffusion, ranging from total convergence to the emergence of distinct camps.
+
+## Discussion 
+
+In this study, we emphasize that individuals are sophisticated social learners and that, for that reason, influence can come from different sources. This is not a novel idea; it is prevalent in the literature about social influence (Paluck and Shepherd 2012), cultural evolution (McElreath et al. 2008), and has even been the backbone of policy interventions Campbell394et al. 2008). Agents do not passively absorb the influence of their immediate ties but actively use learning heuristics, like following prestige-cues, to copy the successful. Our models of cultural transmission, nonetheless, do not tend to incorporate these varying learning heuristics or to explore how the weight we place on these sources of information affects how behaviors and ideas spread across networks. We contend that there are two main ways in which we can begin to tackle this issue: first, we can incorporate statistical techniques that are capable of adjudicating the importance of different sources of information in longitudinal network data; second, we can outline formal models that reflect that individuals look at different parts of the social structure when foraging for information.
+
+Using longitudinal network data on adolescent behavior, we fit Bayesian multilevel models where the main predictor variables are the behaviors of ego’s immediate ties and the habits of the most popular nodes in the network. We use individual-level variation in these dependent variables to predict the agent’s probability of drinking, illegally copying a CD, running a red light, and skipping a public transportation fee. The models show that increases in global and local scores lead to considerably higher probability of adopting the behaviors in subsequent waves. However, we notice subtle differences between the relative weight of the coefficients across the independent variables. While the behavior of immediate ties carries more weight when it comes to drinking, the habits of popular nodes are slightly more influential for predicting whether agents have illegally copied a CD or ran a red light. Thus, even among relatively similar behaviors, we are able to tease out subtle differences in the informativeness of different sources of social information.
+
+These results are meant to show that we can benefit from statistical approaches that disentangle the different sources of social influence. The models here, however, are relatively simple so they should be only interpreted as illustrations of a broader idea. Currently, there is exciting work that tries to infer learning heuristics from decision data and that seeks to provide computational tools to detect and simulate processes of contagion underpinned by multiple social learning strategies. Scholars interested in cultural transmission need to dialogue more directly with this body of work. In order to understand how culture flows throughout a network, we need to take into account who is learning from whom, and how. To this end, we need to incorporate approaches that help us tease out the importance of differences sources of information for a given social phenomenon.
+
+Our simulations of cultural transmission should reflect that social learning is not monolithic.Here, we expand Friedkin and Johnsen’s classic formulation of social influence to incorporate the idea that individuals learn from their immediate ties but also, following prestige cues, look at the most central nodes of the networks where they are situated. This general formulation forms the skeleton of the agent-based simulation we construct. Each turn, agents pay attention to three sources of information: what their immediate ties are doing, what the most central nodes in the network are doing, and their own habits. Then they adjust their behavior with a probability $\pi$  that takes into account the weight placed on each source of information. This model then allows us to explore the implication of placing different weights on varying social learning strategies for cultural transmission.
+
+aking into account the weights placed on different sources of information is key because they shape trajectories of cultural transmission. The simulation results show that the importance that is given to social and individual information, as well as to local and global sources, shapes how and to what extent a behavior spreads across a network. When individuals pay little attention to social cues, there is predictably little transmission. As the weight of social cues increases, so does the reach of the behavior being transmitted. However, even when agents prioritize social cues, the places where they get these cues affect the processes of diffusion: a tendency to learn from popular nodes, for instance, tends to lead to quicker processes of transmission. How a behavior spreads across a network depends then, in part, on the learning techniques agents use to identify and imitate such action.
+
+A key finding of this analysis is the interplay between different sources of social influence can lead to the emergence of sub-groups in fully connected networks. Goldberg and Stein (2018) contend that one of the shortcomings of the “contagion” models of diffusion is that they imply that ultimately a fully connected network will always reach a point of full convergence. Their agent-based simulations of associative diffusion seek to emend this limitation. Other simulation work shows that polarization can arise in contexts with no structural barriers if agents are biased toward particular kinds of information or if they preferentially choose to learn from certain types of actors (Deffuant et al. 2000). Here, we show that we can also explain how distinct pockets of behavior emerge, even in fully connected structures, by looking at the different strategies that actors use to learn from one another and how much weight they place on the information acquired in these ways.
+
+## Conclusion
+
+To conclude, in this paper we have pursued a straightforward line of argument: that individuals use different learning strategies depending on the phenomenon at hand, and that these heuristics shape processes of cultural transmission. Even though multiple strands of literature converge in arguing that individuals look at different sources when foraging for useful information, models of cultural transmission do not tend to incorporate varying learning techniques. Here, we build an agent-based simulation that seeks to address this. In the first part of the analysis, we fit multi-level logit models on longitudinal network data. The results illustrate that, even for similar behaviors, there are subtle differences in how much weight individuals place on the habits of their immediate ties and on the behaviors of the most central nodes of their networks. This suggests that there might indeed be differences in the learning strategies agents use when faced with different phenomena and that, therefore, we should try to tease out these varying sources of social influence. Disentangling the weight placed on global and local dynamics is important because this interplay affects processes of cultural transmission. The agent-based simulation we present in the second part of the paper lends credence to this idea. Whether individuals learn from those around them or from the most central nodes of the network shapes how and to what extent behaviors spread. Importantly, we notice that when agents prioritize local information sub-groups emerge, even in the fully connected network. Trajectories of cultural diffusion then are partly shaped by the strategies individuals use to learn from one another. Therefore, to understand how culture is transmitted we need to take into account that individuals are sophisticated social learners, capable of mixing and matching heuristics when foraging for information.
