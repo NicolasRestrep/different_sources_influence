@@ -1,0 +1,409 @@
+---
+title: "Initial Exploration"
+author: "Nicolas Restrepo"
+date: "9/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Variables of interest
+
+This is an initial exploration of the student data. The dataset has four waves, and several questions that might be of interest for the question at hand. Here, I want to check what variables are available across waves and which do not have too many missing values. Let's load in the necessary packages:
+
+```{r}
+library(tidyverse)
+library(naniar)
+library(haven)
+library(igraph)
+library(lme4)
+library(brms)
+```
+
+Now, let's try to read in the data:
+
+```{r}
+wave1 <- read_sav("~/Documents/global_local_influence/Data/PupilsWaveV.sav")
+wave2 <- read_sav("~/Documents/global_local_influence/Data/PupilsWaveW_geanonimiseerd.sav")
+wave3 <- read_sav("~/Documents/global_local_influence/Data/PupilsWaveX.sav")
+wave4 <- read_sav("~/Documents/global_local_influence/Data/PupilsWaveY.sav")
+```
+
+Here, the variables are named a bit differently depending on the wave. Most variables in wave 1 end with an "a", while most in wave 2 end with a "b", and so the pattern continues. This is important for later joining the dataframes. 
+
+I am going to begin by narrowing down the dataframes into three main sections: 
+
+1) One related to alcohol, smoking, and drugs. 
+2) Another related to hobbies and music. 
+3) The last one involving the trust and altruism questions. 
+
+I am going to look for those questions in all four waves and see what the patterns of missingness look like. 
+
+```{r}
+# First create a variable for id 
+# Then filter for variables of interest
+df1 <- wave1 %>% 
+  mutate(id = paste0(schoolnr,namenr)) %>% 
+  select(id, actdrug, actalcoh, actsmoke, contains('hobby'), contains('music'), contains('trust'))
+
+glimpse(df1)
+# Awesome, it looks like we expected. 
+
+# Same for wave2 
+df2 <- wave2 %>% 
+  mutate(id = paste0(schoolnr,namenr)) %>% 
+  select(id, actdrugb, actalcob, actsmokb, contains('hobby'), contains('music'), contains('trust'))
+
+glimpse(df2)
+
+# Now for wave 3 
+df3 <- wave3 %>% 
+  mutate(id = paste0(schoolnr,namenr)) %>% 
+  select(id, actdrugc, actalcoc, actsmokc, contains('hobby'), contains('music'), contains('trust'))
+
+glimpse(df3)
+
+# And last for wave 4 
+df4 <- wave4 %>% 
+  mutate(id = paste0(schoolnr,namenr)) %>% 
+  select(id, actdrugd, actalcod, actsmokd, contains('hobby'), contains('music'), contains('trust'))
+
+glimpse(df4)
+```
+
+Okay, now let's see how the missing values look like for each of the dataframes. 
+
+```{r}
+map(list(df1, df2, df3, df4), vis_miss)
+```
+
+I think the best options right now are to look at the deviant behaviors, the first question of music, and the trust questions. I am sure I am going to find some useful ways of approaching these data. I am interested in the drop of missing values between wave 2 and 3. Did they start coding missing values any differently? These are questions that I will have to address. For now, let me think about how to build the networks.
+
+## Building the networks
+
+Constructing the networks here will be a bit tricky. There are many schools and many classes inside each school; in total I have 126 classes. The networks themselves are not very big. Thus, it'll be interesting to see whether I can pick up on some of the dynamics I am interested in given that most of the networks I will be able to construct are fundamentally 'local' in nature. 
+
+Let's look at just one network. I am going to focus here on friendship ties. There are multiple questions that get at this, so I will combine them. 
+
+```{r}
+netdf <- wave1 %>% 
+  filter(schoolnr == wave1$schoolnr[[1]]) %>% 
+  select(namenr, schoolnr, contains('emosup'), contains('person'), 
+         contains('friend'))
+
+glimpse(netdf)
+```
+We only have 18 kids here. I just wonder how well we are going to capture "global" dynamics with this. Let me see if I can build the network. 
+
+```{r}
+net_mat <- matrix(0, 18, 18)
+
+for (j in 1:nrow(netdf)) {
+  vect <- netdf[j,-c(1,2)] %>% as.numeric(.)
+  matches <- vect[which(vect>0)]
+  if (is_empty(matches)) { 
+    net_mat[j,] <- 0
+    } else {
+    for (i in 1:length(matches)) {
+      net_mat[j,matches[[i]]] <- 1
+      }
+  }
+}
+
+network <- graph_from_adjacency_matrix(net_mat, mode = 'directed')
+plot(network)
+```
+Okay, this looks good. Now, the challenge is to be able to extend this to all schools. However, I am tempted to try to get multiwave data for one school and compute the averages. Having done that it might be easier to extend the analysis to encompass all schools. 
+
+Let's try to do it. 
+
+```{r}
+
+get_scores <- function(x){
+friends <- which(net_mat[x,]==1)
+popular <- which.max(eigen_centrality(network)$vector)
+
+avg_friends <- wave1 %>% 
+  filter(schoolnr == wave1$schoolnr[[1]], 
+         namenr %in% friends) %>% 
+  select(actalcoh) %>% 
+  summarise(avg = mean(actalcoh))
+
+pop_score <- wave1 %>% 
+  filter(schoolnr == wave1$schoolnr[[1]], 
+         namenr %in% popular) %>% 
+  select(actalcoh) %>% 
+  summarise(pop_avg = mean(actalcoh))
+
+return(c(popular_score = pop_score$pop_avg, 
+         friends_score = avg_friends$avg))
+}
+
+map_df(c(1:18), get_scores)
+```
+
+A lot of missing values, even here. Can I put all this code together in a way that would allow me to iterate over schools? 
+
+```{r}
+get_scores <- function(df, school,dv) {
+    # Begin by taking the friendship columns 
+    netdf <- df %>% 
+    filter(schoolnr == school) %>% 
+    select(namenr, schoolnr, contains('emosu'), contains('perso'), 
+           contains('frien'))
+  # Build the network 
+  net_mat <- matrix(0, max(netdf$namenr), max(netdf$namenr))
+  for (j in 1:max(netdf$namenr)) {
+    vect <- netdf[netdf$namenr==j,-c(1,2)] %>% as.numeric(.)
+    vect[which(vect > max(netdf$namenr))] <- NA
+    matches <- unique(vect[which(vect>0)])
+    
+    if (is_empty(matches)) { 
+      net_mat[j,] <- 0
+    } else {
+      for (i in 1:length(matches)) {
+        net_mat[j,matches[[i]]] <- 1
+      }
+    }
+  }
+  network <- graph_from_adjacency_matrix(net_mat, mode = 'directed')
+  # Function to go through all the kids in a school 
+  calculate_school <- function(x){
+    friends <- which(net_mat[x,]==1)
+    cent_scores <- eigen_centrality(network)$vector
+    popular <- which(cent_scores >= quantile(cent_scores, 0.85))
+    
+    
+    avg_friends <- df %>% 
+      filter(schoolnr == school, 
+             namenr %in% friends) %>% 
+      select(dv) %>% 
+      rename(value = dv) %>% 
+      summarise(avg = mean(value))
+    
+    pop_score <- df %>% 
+      filter(schoolnr == school, 
+             namenr %in% popular) %>% 
+      select(dv) %>% 
+      rename(value = dv) %>% 
+      summarise(pop_avg = mean(value))
+    
+    return(c(namenr=x, 
+             schoolnr = school, 
+             popular_score = pop_score$pop_avg, 
+             friends_score = avg_friends$avg))
+  }
+  pupil_names <- unique(netdf$namenr)
+  scores_data <- map_df(pupil_names, calculate_school)
+  
+  return(scores_data)
+}
+list_schools <- unique(wave1$schoolnr)
+```
+
+I am ready to try to calculate the scores for all schools. Let's start small and move from there. 
+
+```{r}
+ls_truncated <- list_schools[1:3]
+
+trial_trunc <- map_df(ls_truncated, get_scores, df = wave1, dv = 'actalcoh')
+
+glimpse(trial_trunc)
+```
+
+It works! Let's see what happens if we try to do all schools. 
+
+But before I am going to binarize the variable: 
+
+```{r}
+wave1 <-  wave1 %>% 
+  mutate(actalcoh = case_when(actalcoh == 1 ~ 0, 
+                              actalcoh == 2 ~ 1, 
+                              actalcoh == 3 ~ 1, 
+                              actalcoh == 4 ~ 1, 
+                              actalcoh == 5 ~ 1)) 
+
+
+wave2 <-  wave2 %>% 
+  mutate(actalcob = case_when(actalcob == 1 ~ 0, 
+                              actalcob == 2 ~ 1, 
+                              actalcob == 3 ~ 1, 
+                              actalcob == 4 ~ 1, 
+                              actalcob == 5 ~ 1)) 
+
+
+wave3 <-  wave3 %>% 
+  mutate(actalcoc = case_when(actalcoc == 1 ~ 0, 
+                              actalcoc == 2 ~ 1, 
+                              actalcoc == 3 ~ 1, 
+                              actalcoc == 4 ~ 1, 
+                              actalcoc == 5 ~ 1))
+
+
+wave4 <-  wave4 %>% 
+  mutate(actalcod = case_when(actalcod == 1 ~ 0, 
+                              actalcod == 2 ~ 1, 
+                              actalcod == 3 ~ 1, 
+                              actalcod == 4 ~ 1, 
+                              actalcod == 5 ~ 1)) 
+
+```
+
+
+```{r}
+start <- Sys.time()
+alc_scores_w1 <- map_df(list_schools, get_scores, df = wave1, dv = 'actalcoh')
+end <- Sys.time()
+```
+
+We got all the schools. How much missing data is there here? 
+
+```{r}
+vis_miss(alc_scores_w1)
+```
+
+A considerable amount in the friends' scores but nothing *too* bad. I should try to do it for the other waves and see how things look. Does the code behave well on the other waves? 
+
+```{r}
+# Get list of schools for wave2 
+list_schools_w2 <- unique(wave2$schoolnr)
+
+# Annoyingly they are not the same
+# And there is one value missing 
+
+list_schools_w2 <- list_schools_w2[-c(1)]
+```
+
+Before I can move ahead with this, I need to make the code more robust so that it takes different variables. 
+
+I've done that, let's see if it works now
+
+```{r}
+alc_scores_w2 <- map_df(list_schools_w2, get_scores, df = wave2, dv = 'actalcob')
+```
+
+```{r}
+vis_miss(alc_scores_w2)
+```
+Shoot this looks very very good. Let me finish with the other 2. 
+
+```{r}
+list_schools_w3 <- unique(wave3$schoolnr)
+list_schools_w4 <- unique(wave4$schoolnr)
+alc_scores_w3 <- map_df(list_schools_w3, get_scores, df = wave3, dv = 'actalcoc')
+alc_scores_w4 <- map_df(list_schools_w4, get_scores, df = wave4, dv = 'actalcod')
+```
+
+Join the dataframes: 
+
+```{r}
+# Join Wave 1 
+df1 <- alc_scores_w1 %>% 
+  mutate(namenr = as.double(namenr)) %>% 
+  right_join(., wave1, by = c('namenr', 'schoolnr'))
+
+# Join Wave 2 
+df2 <- alc_scores_w2 %>% 
+  mutate(namenr = as.double(namenr)) %>% 
+  right_join(., wave2, by = c('namenr', 'schoolnr'))
+
+# Join Wave 3 
+df3 <- alc_scores_w3 %>% 
+  mutate(namenr = as.double(namenr)) %>% 
+  right_join(., wave3, by = c('namenr', 'schoolnr'))
+
+# Join Wave 4 
+df4 <- alc_scores_w4 %>% 
+  mutate(namenr = as.double(namenr)) %>% 
+  right_join(., wave4, by = c('namenr', 'schoolnr'))
+
+```
+
+This worked relatively well. Now, I need to find the IDs that occur in all waves. Remember that school number is different in Wave 2, so I need to find ways of dealing with that. 
+
+```{r}
+# Create unique IDs
+df1 <- df1 %>% mutate(id = paste0(schoolnr,namenr))
+df2 <- df2 %>% filter(schoolnr != " ") %>% 
+  mutate(schoolnr = str_trim(tolower(schoolnr))) %>% 
+  mutate(id =paste0("0",schoolnr, namenr))
+df3 <- df3 %>% mutate(id = paste0(schoolnr, namenr))
+df4 <- df4 %>% mutate(id = paste0(schoolnr, namenr))
+
+# Now let's find the intersections 
+ids_all_waves <- Reduce(intersect, list(df1$id, df2$id, df3$id, df4$id))
+
+alc_w1 <- df1 %>% 
+  filter(id %in% ids_all_waves) %>% 
+  select(id,friends_score, popular_score, actalcoh) %>% 
+  rename(friends_w1 = friends_score, 
+         popular_w1 = popular_score, 
+         actalcoh_w1 = actalcoh)
+
+alc_w2 <- df2 %>% 
+  filter(id %in% ids_all_waves) %>% 
+  select(id,friends_score, popular_score, actalcob) %>% 
+  rename(friends_w2 = friends_score, 
+         popular_w2 = popular_score, 
+         actalcoh_w2 = actalcob)
+
+alc_w3 <- df3 %>% 
+  filter(id %in% ids_all_waves) %>% 
+  select(id,friends_score, popular_score, actalcoc) %>% 
+  rename(friends_w3 = friends_score, 
+         popular_w3 = popular_score, 
+         actalcoh_w3 = actalcoc)
+
+alc_w4 <- df4 %>% 
+  filter(id %in% ids_all_waves) %>% 
+  select(id,friends_score, popular_score, actalcod) %>% 
+  rename(friends_w4 = friends_score, 
+         popular_w4 = popular_score, 
+         actalcoh_w4 = actalcod)
+
+df_wide <- left_join(alc_w1, alc_w2, by = "id") %>% 
+  left_join(., alc_w3, by = "id") %>% 
+  left_join(., alc_w4, by = "id")
+```
+
+Now, let me make the long dataframes. 
+
+```{r}
+friends_long <- df_wide %>% 
+  pivot_longer(cols = contains('friends'), names_to = "wave", values_to = "friends") %>% 
+  select(id, friends) 
+
+popular_long <- df_wide %>% 
+  pivot_longer(cols = contains('popular'), names_to = "wave", values_to = "popular") %>% 
+  select(popular)
+
+alc_long <- df_wide %>% 
+  pivot_longer(cols = contains('actalcoh'), names_to = "wave", values_to = "actalcoh") %>% 
+  select(actalcoh)
+
+df_long <- cbind(friends_long, popular_long, alc_long)
+
+df_long <- df_long %>% 
+  mutate(popular = as.numeric(popular), 
+         friends = as.numeric(friends), 
+         id = as.factor(id))
+
+dfl_clean <- drop_na(df_long) 
+alcoh <- zap_labels(dfl_clean$actalcoh)
+dfl_clean <- dfl_clean %>% 
+  mutate(alcoh=zap_labels(alcoh))
+
+write_csv(dfl_clean, "~/Documents/global_local_influence/Data/alcohol_long_binary.csv", col_names = TRUE)
+```
+
+```{r}
+b1 <- glmer(alcoh ~ friends + popular + 1 + friends*popular + (1 | id), 
+           data = dfl_clean, 
+           family = "binomial")
+
+summary(b1)
+```
+
+
