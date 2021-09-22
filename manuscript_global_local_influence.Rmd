@@ -1,6 +1,6 @@
 ---
 title: "Dynamics of Global and Local Social Influence"
-author: "Fatima Alqabandi & Nicolas Restrepo"
+author: "Nicolas Restrepo & Thomas Wolff"
 date: '`r format(Sys.time(), "%d %B, %Y")`'
 fontsize: 12pt
 output:
@@ -26,6 +26,9 @@ library(igraph)
 library(brms)
 library(patchwork)
 library(panelr)
+library(igraph)
+library(ggraph)
+library(tidygraph)
 theme_set(theme_classic())
 ```
 
@@ -49,14 +52,14 @@ In the study of cultural diffusion, the interplay between local and global patte
 
 ### Beyond immediate ties: social influence and learning heuristics
 
-Contemporary conceptions of social influence also wrestle with the tension between global and local dynamics. Increasingly, researchers have moved away from models that only consider immediate ties to more complex conceptualizations that specify varying sources of influence [@dimaggioNetworkEffectsSocial2012]. For the purposes of this analysis, it is important to highlight the work that has shown that central nodes in a structure exercise considerable social influence
+Contemporary conceptions of social influence also wrestle with the tension between global and local dynamics. Increasingly, researchers have moved away from models that only consider immediate ties to more complex conceptualizations that specify varying sources of influence [@dimaggioNetworkEffectsSocial2012; @burtSocialContagionInnovation1987]. For the purposes of this analysis, it is important to highlight the work that has shown that central nodes in a structure exercise considerable social influence
 76 across the network [@robalinoPeerEffectsAdolescent2018; @paluckSalienceSocialReferents2012]. These findings lend credence to the argument that popular and salient individuals are particularly influential; a view that has been furthered in scholarly work [@sherifReferenceGroupsExploration1964] but that has also been the backbone of policy interventions [@campbellInformalSchoolbasedPeerled2008]. Peer effects then are not monolithic, but rather have varying weights depending on where – and who – they come from.
 
 The underlying assumption here is that agents are capable of inferring who these central nodes are and of drawing information from them. This is not an unwarranted hypothesis.Humans are sophisticated social learners and one of the most widely used social learning strategies, across cultures, is to copy successful individuals [@jimenezPrestigebiasedSocialLearning2019]. This means that we are highly sensitive to prestige cues. Experimental work has shown that even children engage in prestige-based social learning [@chudekPrestigebiasedCulturalLearning2012]. Salient individuals in a structure, then, are visible. They are visible because they have many connections – their in-degree count is high – but also because individuals are adept at inferring who has high status in a given social group. As Shepherd [-@shepherdStructurePerceptionHow2017] notes, these processes of inference vary depending on the social positions that individuals occupy; nodes that are highly visible to a portion of the structure might be relatively obscure to others. But we still look for prestige cues, however limited our vision might be. Agents are not passive receptacles of social influence, but they instead follow cues that might indicate where to look for useful information.
 
 There is an established line of interdisciplinary research that examines the different strategies that individuals use when foraging for information. Imitating “successful” individuals in the network proves an important strategy when tasks are complex or when environments are highly variable [@henrichNatureCulturalTransmission2011; @mcelreathExistenceAimingOutside2008; @henrichCulturalTransmissionDiffusion2001]. When environments are relatively stable - e.g. Jane knows most people in her school will not show up tomorrow wearing Motorhead t-shirts - just looking at what the majority of group members are doing is an effective strategy [@richersonNotGenesAlone2008; @rendellWhyCopyOthers2010]. There are trade-offs between the different strategies: while identifying successful individuals entails knowledge about the markers of prestige in a given context, frequency-dependent learning, although efficient, can be ineffective in highly variable environments. Computational models and experimental data show that actors use these different strategies depending on the task at hand [@mcelreathExistenceAimingOutside2008; @barkocziSocialLearningStrategies2016]. Often the most successful strategies involve a blend of different heuristics, combined with some individual exploration.
 
-Multiple strands of research then coalesce around the idea that agents look at different sources when trying the acquire social information. Network researchers have built increasingly complex models of social influence, while scholars interested in social learning provide evidence for the cognitive bases of these learning heuristics. Nonetheless, our models of cultural transmission lag behind. They seldom reflect the fact that agents seek information from different parts of the social structure, that they use different strategies to do so, and that they might give value to such information differently depending on the social phenomena at hand. It remains unclear then how the use of varying strategies of social learning affects processes of cultural transmission.
+Multiple strands of research then coalesce around the idea that agents look at different sources when trying the acquire social information. Network researchers have built increasingly complex models of social influence, while scholars interested in social learning provide evidence for the cognitive bases of these learning heuristics. What remains unclear, however, is how the use of different learning strategies affects processes of cultural transmission. For instance, recent work has used simulations to explore how beliefs, habits, and the connections between them might emerge and spread across groups. Nonetheless, these models seldom reflect the fact that agents seek information from different parts of the social structure, that they use different strategies to do so, and that they might give value to such information differently depending on the social phenomena at hand.
 
 This line of inquiry is particularly promising because we have grounds to believe that different social learning strategies might shape how practices spread through a network. Edelmann [-@edelmannFormalizingSymbolicBoundaries2018], for instance, shows that agents respond differently to peer influence depending on how culturally proximate they consider their alters and how culturally appropriate they deem the behavior in question. In other words, if a distant acquaintance of Jane recommends a country singer, she might just dismiss it. If one of her ‘metalhead’ friends provides the same recommendation, it might carry more weight just on account of how unexpected that would be. Computational work shows that these learning biases - such as preferentially attending to in-group members [@smaldinoAdoptionSocialMarker2017] or discarding information that is too distant from one’s existent preferences [@deffuantMixingBeliefsInteracting2000] - leads to varying diffusion trajectories. Even slight changes in the information that agents take into account give way to contrasting outcomes, from total consensus to fractured polarization. The question, then, is whether foraging for information from different sources, even when no biases are present, would also lead to varying patterns of diffusion. To tackle this issue, we need two things: first, statistical methods that can help us disentangle the importance of different sources of information for a given social phenomenon; second, ways of formalizing how agents use and give weight to different social learning strategies.
 
@@ -64,7 +67,7 @@ This line of inquiry is particularly promising because we have grounds to believ
 
 To measure the differential impact of different sources of influence, we can draw ideas from research on social learning, specifically on the cultural evolution of strategies in games. When a soccer manager is deciding what formation to play, they need to consider many factors: their own track-record with a strategy, how that formation has fared in the league as a whole, and the kind of strategy their rivals are likely to use [@mesoudiCulturalEvolutionFootball2020[. Recent work explores how these global and local sources of information help us predict the popularity and evolution of certain strategies across time [@mesoudiCulturalEvolutionFootball2020; @beheimStrategicSocialLearning2014]. Researchers have also designed games to conduct experimental work on broader social learning patterns [@deffnerDynamicSocialLearning2020]. Though their statistical models vary in complexity, these studies tend to use repeated measures at the individual level to fit multilevel models that examine how informative personal record and social cues are when predicting what players do next. Our argument is that we can adapt the techniques that these studies use in order to infer the informativeness of different sources of social influence in longitudinal network data.
 
-In order to provide a formal model that specifies the importance of varying sources of influence, we can use as a starting point Friedkin and Johnsen’s [-@friedkinSocialPositionsInfluence1997] classic formulation of social influence. Formalization in this case is useful because it specifies exactly how new ideas of social influence expand upon previous work, and - importantly - the assumptions we have to make in the process. Friedkin and Johnsen’s [-@friedkinSocialPositionsInfluence1997] is as follows:
+In order to provide a formal model that specifies the importance of varying sources of influence, we can use as a starting point Friedkin and Johnsen’s [-@friedkinSocialPositionsInfluence1997] classic formulation of social influence. Formalization in this case is useful because it specifies exactly how new ideas of social influence expand upon previous work, and - importantly - the assumptions we have to make in the process. Burt's [-@burtSocialContagionInnovation1987] work remains a paradigmatic example of the usefulness of formalizing different processes of social influence. His formalization of influence through structural equivalence closely  parallels contemporary work on social learning, which shows that agents with domain expertise tend to learn from those who seem similar. In the same vein, it is useful to think how prestige-biased social learning could be incorporated into standard formal models of social influence. Friedkin and Johnsen’s [-@friedkinSocialPositionsInfluence1997] definition is as follows:
 
 $$Y^{(t)} = \alpha WY^{(t-1)} + (1-\alpha)Y^{(1)}$$ 
 
@@ -102,7 +105,7 @@ What we need is an empirical strategy to adjudicate the importance of different 
 
 Here, we use the longitudinal data-set of adolescent behaviors and opinions collected by Knecht et al. [-@knechtNetworkActorAttributes2012]. The data-set was collected over four waves in the space of three months between 2003 and 2004. In total, 2996 students – belonging to 14 schools in the Netherlands – were surveyed. 1509 students participated in all four waves and we focus on their responses for the following analysis.
 
-We focus on four independent variables: drinking, whether a respondent has ran a red light while biking, whether they have copied an illegal CD, and whether they have used public transportation without paying the fare. We choose to examine different variables because our central goal is to analyze whether global and local measures are differentially informative across social phenomena. The questions for these four items were the same: they asked the respondents about their engagement with these behaviors in the last three months. The possible responses were ordinal with five categories: “never,” “one time,” “two to four times,” “five to ten times,” and “more than ten times.” For the purposes of this analysis, we dichotomize the responses so that if a participant answers “never” they get a value of 0 or a value of 1 otherwise. We do this so that the connections between this empirical analysis and the agent-based simulation presented below are clearer.
+We focus on three independent variables: drinking, smoking, and whether the respondents have used public transportation without paying the fare. We choose to examine different variables because our central goal is to analyze whether global and local measures are differentially informative across social phenomena. The questions for these items were the same: they asked the respondents about their engagement with these behaviors in the last three months. The possible responses were ordinal with five categories: “never,” “one time,” “two to four times,” “five to ten times,” and “more than ten times.” For the purposes of this analysis, we dichotomize the responses so that if a participant answers “never” they get a value of 0 or a value of 1 otherwise. We do this so that the connections between this empirical analysis and the agent-based simulation presented below are clearer.
 
 The explanatory variables are two measures we construct to represent the local and global prevalence of the behavior in question. The local score is the average behavior among ego’s friends. Thus, if ego has five nominated friends and two of them drink, then ego’s local score at that wave would be $\frac{2}{5}$. Local score, then, varies across respondents, reflecting differences in their immediate friendship networks. The global score, in turn, is the same for all individuals embedded in the same structure at a given wave. We calculate it by looking at the average behavior of the most popular nodes at a given time. To operationalize this idea of popularity, we look at eigen-vector centrality. We consider the nodes to be among the most popular if they have an eigen-vector centrality score above the 85th percentile.^[There are different ways of operationalizing popularity; cf. [@robalinoPeerEffectsAdolescent2018]]. Here, we decide
 to use a threshold that indexes a group of high-status, popular nodes.^[We conducted the same analyses using the 80th and 90th percentile as cutoffs and got largely consistent results] This captures how social learning scholars have discussed and formalized prestige-biased social learning [@jimenezPrestigebiasedSocialLearning2019]. We want to reflect the idea that, when using this social learning strategy, agents look at a few individuals who they consider to be successful. Therefore, having a threshold that helps us distinguish between this group and the rest of the nodes is appropriate. Say then that, in a given school, there are six nodes whose eigen-vector centrality is above that threshold, and one of them drinks. The global score for all nodes in that network in that wave would be $\frac{1}{6}$. Though these constructed variables are necessarily rough approximations, we consider that these scores can help us disentangle the importance of global and local sources of influence for different behaviors.
@@ -150,10 +153,10 @@ alc_diff <- ss %>%
        title = "Difference")
 
 
-### Red light ####
-bike_model <- read_rds("Analyses/bike_model.rds")
+### Smoking ####
+smok_model <- read_rds("Analyses/smoke_model.rds")
 
-ss <- posterior_samples(bike_model) %>% 
+ss <- posterior_samples(smok_model) %>% 
   select(b_friends_z, b_popular_z)
 
 ss_long <- ss %>% 
@@ -161,16 +164,16 @@ ss_long <- ss %>%
   mutate(coef = if_else(type == "b_friends_z", "friends", "popular"), 
          coef = as.factor(coef))
 
-p_bike <- ss_long %>% 
+p_smok <- ss_long %>% 
   ggplot(aes(x = coefficient, fill = coef)) +
   geom_density(alpha = 0.5) + 
   labs(x = "", 
        title = "", 
-       subtitle = "Red Light") +
-  theme(legend.position = "none") +
+       subtitle = "Smoking") + 
+  theme(legend.position = "top") +
   theme(legend.title = element_blank())
 
-bike_diff <- ss %>% 
+smok_diff <- ss %>% 
   mutate(difference = b_friends_z-b_popular_z) %>% 
   ggplot(aes(x = difference)) +
   geom_density(fill = "gray80", 
@@ -208,45 +211,15 @@ fare_diff <- ss %>%
        y = "", 
        title = "")
 
-### CD ####
-copy_model <- read_rds("Analyses/copy_model.rds")
-
-ss <- posterior_samples(copy_model) %>% 
-  select(b_friends_z, b_popular_z)
-
-ss_long <- ss %>% 
-  pivot_longer(1:2, values_to = "coefficient", names_to = "type") %>% 
-  mutate(coef = if_else(type == "b_friends_z", "friends", "popular"), 
-         coef = as.factor(coef))
-
-p_copy <- ss_long %>% 
-  ggplot(aes(x = coefficient, fill = coef)) +
-  geom_density(alpha = 0.5) + 
-  labs(x = "", 
-       title = "", 
-       subtitle = "Copy CD") +
-  theme(legend.position = "none") +
-  theme(legend.title = element_blank())
-
-copy_diff <- ss %>% 
-  mutate(difference = b_friends_z-b_popular_z) %>% 
-  ggplot(aes(x = difference)) +
-  geom_density(fill = "gray80", 
-               alpha = 0.5) +
-  labs(x = "", 
-       y = "", 
-       title = "")
-
-
-patched <- (p_alc | alc_diff) / (p_bike | bike_diff) /(p_fare | fare_diff) / (p_copy | copy_diff)
+patched <- (p_alc | alc_diff) / (p_smok | smok_diff) /(p_fare | fare_diff) 
 
 patched
 
 ```
 
-Figure 1 shows the marginal posterior distributions for the coefficients for local and global scores for the four models, as well as the difference between the former and the latter. We can read these plots as the predicted increase in the log-odds of incurring in the behavior at hand given a one standard deviation increase in either global or local score. At first glance, we notice that the relative weight of these coefficients is consistently high; an increase in either global or local scores would result in considerably higher log-odds of engaging in the behavior in question. Nonetheless, we also notice subtle differences between local and global dynamics in the models. For illegally copying a CD, the behaviors of the immediate ties and those of the central nodes are almost equally as informative for ego’s behavior in following waves, with the former being slightly more influential. When it comes to running a traffic light and not paying a public transportation fare, however, the distributions of the difference between both coefficients is mostly negative. This implies that increases in the global score would have a bigger effect on the probability of engaging in these behaviors than increases in the local counterpart. We notice the opposite dynamic when we consider drinking: variation in local measures is more informative of one’s drinking habits than the actions of the popular nodes.
+Figure 1 shows the marginal posterior distributions for the coefficients for local and global scores for the three models, as well as the difference between the former and the latter. We can read these plots as the predicted increase in the log-odds of incurring in the behavior at hand given a one standard deviation increase in either global or local score. At first glance, we notice that the relative weight of these coefficients is consistently high; an increase in either global or local scores would result in considerably higher log-odds of engaging in the behavior in question. Nonetheless, we also notice subtle differences between local and global dynamics in the models. For smoking, the behaviors of the immediate ties and those of the central nodes are almost equally as informative for ego’s behavior in following waves. When it comes to not paying a public transportation fare, however, the distributions of the difference between both coefficients is mostly negative. This implies that increases in the global score would have a bigger effect on the probability of engaging in these behaviors than increases in the local counterpart. We notice the opposite dynamic when we consider drinking: variation in local measures is more informative of one’s drinking habits than the actions of the popular nodes.
 
-We need to be careful when interpreting these coefficients. The coefficients of logit models are notoriously difficult to understand when examined separately. This is because the absolute probability of the outcome depends on all the moving parts of the model, not just the marginal distribution of a single coefficient estimate. Moreover, differences that might seem considerable between high values in the log-odds scale are smaller when transposed to the probability scale. For this reason, it is key to look at the predicted probabilities of engaging in the behaviors in question. Here, we present predicted probabilities for running a red light while biking and for drinking alcohol. 
+We need to be careful when interpreting these coefficients. The coefficients of logit models are notoriously difficult to understand when examined separately. This is because the absolute probability of the outcome depends on all the moving parts of the model, not just the marginal distribution of a single coefficient estimate. Moreover, differences that might seem considerable between high values in the log-odds scale are smaller when transposed to the probability scale. For this reason, it is key to look at the predicted probabilities of engaging in the behaviors in question. Here, we present predicted probabilities for the three models . 
 
 ```{r}
 theme_set(theme_classic())
@@ -306,12 +279,12 @@ alc <- newdata %>%
   geom_line(alpha = 0.7) + 
   labs(title = "Alcohol", 
        y = "Predicted probability", 
-       x = "Type of increase")
+       x = "")
 
 #### Running red light ####
 
-dfl_scaled <- read_csv('Data/bike_std.csv')
-bike_model <- readRDS('Analyses/bike_model.rds')
+dfl_scaled <- read_csv('Data/fare_std.csv')
+bike_model <- readRDS('Analyses/fare_model.rds')
 
 median_popular <- median(dfl_scaled$popular_z)
 median_friend <- median(dfl_scaled$friends_z)
@@ -336,15 +309,73 @@ bike <- newdata %>%
              y = predicted_probs, 
              group = id)) +
   geom_line(alpha = 0.7) + 
-  labs(title = "Running a red light", 
+  labs(title = "Skipping fare", 
        y = "Predicted probability", 
-       x = "Type of increase", 
+       x = "", 
        caption = "Figure 2")
 
-(alc | bike)
+#### Alcohol ####
+smoke_model <- readRDS('Analyses/smoke_model.rds')
+# Import the data 
+df_wide <- read_csv('Data/smoke_wide.csv')
+# Turn into a long panel dataset 
+df_long <- long_panel(df_wide, 
+                      id = "id", 
+                      prefix = "_w", 
+                      begin = 1, 
+                      end = 4, 
+                      label_location = "end")
+
+# Rename, change, and clean 
+dfl <- df_long %>% 
+  mutate_at(.vars = c("friends", 
+                      "popular", 
+                      "actsmok"), 
+            as.numeric) %>% 
+  filter(!is.na(friends) & 
+           !is.nan(friends) & 
+           !is.na(popular) & 
+           !is.nan(popular)) 
+
+dfl_scaled <- dfl
+dfl_scaled$friends_z <- (dfl_scaled$friends-mean(dfl_scaled$friends)/sd(dfl_scaled$friends))
+dfl_scaled$popular_z <- (dfl_scaled$popular-mean(dfl_scaled$popular)/sd(dfl_scaled$popular))  
+
+dfl_scaled <- dfl_scaled %>% 
+  panel_data(., id = id, wave = wave)
+
+median_popular <- median(dfl_scaled$popular_z)
+median_friend <- median(dfl_scaled$friends_z)
+one_sd_popular <- median_popular+sd(dfl_scaled$popular)
+one_sd_friend<- median_friend+sd(dfl_scaled$friends_z)
+
+
+person <- sample(dfl_scaled$id, 50)
+newdata <- data.frame(id = rep(person, 2), 
+                      friends_z = rep(c(median_friend, one_sd_friend), each = 50), 
+                      popular_z = rep(c(one_sd_popular, median_popular), each = 50), 
+                      wave = rep(2, 100),
+                      type = rep(c("global score", "local score"), each = 50)) 
+
+preds <- predict(smoke_model, 
+                 newdata = newdata)
+
+newdata$predicted_probs <- preds[,1]
+
+smoke <- newdata %>% 
+  ggplot(aes(x = type, 
+             y = predicted_probs, 
+             group = id)) +
+  geom_line(alpha = 0.7) + 
+  labs(title = "Smoking", 
+       y = "Predicted probability", 
+       x = "Type of increase")
+
+
+(alc | smoke |bike)
 ```
 
-Figure 2 shows two predicted probabilities for each model. We randomly sample 50 agents and predict their probability of engaging in the behavior at hand at different values of the main independent variables. The leftmost point of each plot represents the predicted probability of engaging in the behavior when we add a one standard deviation increase to the global score while keeping local score at its median value. The rightmost point shows the opposite: an increase in local score while holding global score constant. We notice that, in the model that predicts alcohol consumption, there is a clear concentration among lower probabilities; most respondents have a low probability of drinking. However, in many cases, an increase in local score results in a slightly higher probability of engaging in the behavior than a comparable increase in global score. For running a red right while biking, the pattern is reversed. There is a concentration at high probabilities, indicating that most agents have recently ran a red light. The predicted probabilities are slightly higher after a one standard deviation increase in the global score. This means that a rise in global score is more likely to lead to higher predicted probability of engaging in the behavior.
+Figure 2 shows two predicted probabilities for each model. We randomly sample 50 agents and predict their probability of engaging in the behavior at hand at different values of the main independent variables. The leftmost point of each plot represents the predicted probability of engaging in the behavior when we add a one standard deviation increase to the global score while keeping local score at its median value. The rightmost point shows the opposite: an increase in local score while holding global score constant. We notice that, in the model that predicts alcohol consumption, there is a clear concentration among lower probabilities; most respondents have a low probability of drinking. However, in many cases, an increase in local score results in a slightly higher probability of engaging in the behavior than a comparable increase in global score. For using public transportation without paying, the pattern is reversed. There is a concentration at high probabilities, indicating that most agents have recently have skipped such fee. The predicted probabilities are slightly higher after a one standard deviation increase in the global score. This means that a rise in global score is more likely to lead to higher predicted probability of engaging in the behavior.
 
 Overall, the stories that the models tell are relatively consistent: the habits of friends and of popular nodes are informative for understanding an agent’s probability of adopting the behavior. Increases in both global and local scores lead to a heightened predicted probability of engaging in all three behaviors. To an extent, this consistency is reassuring. The behaviors at hand are all similar insofar as they are ‘deviant’ behaviors that require some risk-taking. Overwhelmingly different results would be concerning. Nonetheless, we do notice slight but considerable differences in how important each source of influence is for predicting the agents’ behaviors in the next wave.
 
@@ -359,7 +390,16 @@ set.seed(33)
 # Produce initial network visualization
 # Create small world network 
 network <- sample_smallworld(dim = 1, size = 100, nei = 4, p = 0.1, 10, loops = F)
-plot(network, vertex.size = 6, vertex.label = NA, main = "Figure 3")
+
+graph <- as_tbl_graph(network) %>% 
+  mutate(Popularity = centrality_degree(mode = 'in'))
+
+ggraph(graph, 
+       layout = "graphopt") + 
+  geom_edge_fan(aes(alpha = stat(index)), show.legend = FALSE) + 
+  geom_node_point(aes(size = Popularity),color = "steelblue", show.legend = F) + 
+  #labs(title = "Figure 3") +
+  theme_graph() 
 ```
 
 The thing that is being transmitted here is a dichotomous behavior - like drinking - and, thus, at any point the agents can occupy one of two states, either 0 or 1. At the beginning of the simulation, each node has a starting probability $p$ of having the behavior $(B=1)$. Each turn, every agent looks around and observes three pieces of information: their own record of behavior, the average of their immediate ties (local average), and the average of the most central nodes of the network (global average). Then, it updates its current state by conducting a Bernoulli trial with probability $\pi$ so that:
