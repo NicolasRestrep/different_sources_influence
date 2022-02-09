@@ -113,7 +113,7 @@ diff_inf_sim <-
 
 #### Paul Revere Net ####
 network <-
-  readRDS("Analyses/network_variability/pr_eigen_rand.rds")
+  readRDS("~/different_sources_influence/Analyses/network_variability/pr_eigen_rand.rds")
 
 # Run for 0.5
 vector_si <- rep(seq(0, 1, by = 0.1), 11)
@@ -132,4 +132,4 @@ d5 <-
 end <- Sys.time()
 end - start
 
-saveRDS(d5, "Analyses/network_variability/pr_er_p05.rds")
+saveRDS(d5, "~/different_sources_influence/Analyses/network_variability/pr_er_p05.rds")
